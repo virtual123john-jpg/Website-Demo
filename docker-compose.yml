@@ -1,0 +1,15 @@
+services:
+  web:
+    build: .
+    ports:
+      - "3000:3000"
+    env_file:
+      - .env
+    environment:
+      # Points at an n8n instance you run separately (e.g. your existing
+      # self-hosted "n8n-local" container publishing port 5678 on the host).
+      # host.docker.internal lets this container reach that host-published
+      # port without needing to share a Docker network with it.
+      - N8N_WEBHOOK_URL=http://host.docker.internal:5678/webhook/medigap-chat
+    extra_hosts:
+      - "host.docker.internal:host-gateway"

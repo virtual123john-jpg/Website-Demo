@@ -1,0 +1,157 @@
+{
+  "name": "Medigap Chat",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "medigap-chat",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "webhook-trigger",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [200, 300],
+      "webhookId": "medigap-chat"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Builds the OpenAI Chat Completions request body from the incoming\n// website payload. Keep the systemPrompt text below in sync with\n// src/lib/systemPrompt.ts in the website codebase.\nconst body = $input.first().json.body || $input.first().json;\n\nconst systemPrompt = `You are the JAI Medicare & Medigap Assistant, an educational guide focused\nexclusively on Medicare (Parts A, B, C, D) and Medigap (Medicare Supplement Insurance, Plans A-N).\n\nGuidelines:\n- Explain concepts clearly for someone unfamiliar with insurance terminology.\n- If the user shares an image, describe what you observe and explain relevant terms, but do not\n  invent details you cannot see clearly.\n- Stay general and educational. Do not recommend a specific insurance company or plan as \"the best\".\n- Do not ask for or process full Social Security Numbers or full Medicare Beneficiary Identifiers.\n- For personal enrollment decisions, tell the user to consult a licensed insurance agent or SHIP.\n- Keep answers concise and organized.\n- You are not affiliated with Medicare.gov, CMS, or any government agency.`;\n\nconst messages = [{ role: 'system', content: systemPrompt }];\n\nfor (const m of body.messages || []) {\n  messages.push({ role: m.role, content: m.content });\n}\n\nconst userContent = [];\nif (body.message && body.message.trim().length > 0) {\n  userContent.push({ type: 'text', text: body.message });\n}\nif (body.image && body.image.dataUrl) {\n  userContent.push({ type: 'image_url', image_url: { url: body.image.dataUrl } });\n}\nmessages.push({ role: 'user', content: userContent });\n\nreturn [{\n  json: {\n    model: 'gpt-4o-mini',\n    max_tokens: 500,\n    messages\n  }\n}];"
+      },
+      "id": "build-request",
+      "name": "Build OpenAI Request",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [420, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.openai.com/v1/chat/completions",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json) }}",
+        "options": {}
+      },
+      "id": "call-openai",
+      "name": "Call OpenAI",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [640, 300],
+      "onError": "continueRegularOutput",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "REPLACE_AFTER_IMPORT",
+          "name": "OpenAI Header Auth"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "loose" },
+          "conditions": [
+            {
+              "id": "has-choices",
+              "leftValue": "={{ $json.choices }}",
+              "rightValue": "",
+              "operator": { "type": "array", "operation": "notEmpty" }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "check-success",
+      "name": "Succeeded?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [860, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "const reply = $json.choices[0].message.content;\nreturn [{ json: { reply, source: 'n8n' } }];"
+      },
+      "id": "extract-reply",
+      "name": "Extract Reply",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1080, 200]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            { "id": "error-msg", "name": "error", "value": "The assistant is temporarily unavailable. Please try again.", "type": "string" },
+            { "id": "error-code", "name": "code", "value": "OPENAI_ERROR", "type": "string" }
+          ]
+        },
+        "options": {}
+      },
+      "id": "build-error",
+      "name": "Build Error",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [1080, 420]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json }}",
+        "options": { "responseCode": 200 }
+      },
+      "id": "respond-success",
+      "name": "Respond Success",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [1300, 200]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json }}",
+        "options": { "responseCode": 502 }
+      },
+      "id": "respond-error",
+      "name": "Respond Error",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [1300, 420]
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [[{ "node": "Build OpenAI Request", "type": "main", "index": 0 }]]
+    },
+    "Build OpenAI Request": {
+      "main": [[{ "node": "Call OpenAI", "type": "main", "index": 0 }]]
+    },
+    "Call OpenAI": {
+      "main": [[{ "node": "Succeeded?", "type": "main", "index": 0 }]]
+    },
+    "Succeeded?": {
+      "main": [
+        [{ "node": "Extract Reply", "type": "main", "index": 0 }],
+        [{ "node": "Build Error", "type": "main", "index": 0 }]
+      ]
+    },
+    "Extract Reply": {
+      "main": [[{ "node": "Respond Success", "type": "main", "index": 0 }]]
+    },
+    "Build Error": {
+      "main": [[{ "node": "Respond Error", "type": "main", "index": 0 }]]
+    }
+  },
+  "active": false,
+  "settings": { "executionOrder": "v1" },
+  "meta": {
+    "notes": "After import: create an HTTP Header Auth credential named 'OpenAI Header Auth' with header name 'Authorization' and value 'Bearer <your OPENAI_API_KEY>', then reselect it on the 'Call OpenAI' node. See workflows/n8n_workflow_setup.md."
+  }
+}

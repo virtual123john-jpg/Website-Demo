@@ -1,0 +1,17 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --brand-blue: #1e90ff;
+  --brand-cyan: #45d9ff;
+  --brand-purple: #7a3fff;
+  --brand-light: #eaeff5;
+  --brand-navy-900: #121826;
+  --brand-navy-950: #081321;
+}
+
+body {
+  background-color: var(--brand-light);
+  color: var(--brand-navy-950);
+}
