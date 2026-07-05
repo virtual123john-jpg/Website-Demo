@@ -4,14 +4,26 @@ updates:
     directory: "/"
     schedule:
       interval: "weekly"
-    open-pull-requests-limit: 10
+    open-pull-requests-limit: 5
+    # Major version bumps (React 19, Tailwind 4, Next 16, etc.) often need real code
+    # changes, not just a version number change, so they're excluded from automated
+    # PRs here. Security patches still come through regardless of this rule via
+    # GitHub's separate Dependabot security updates. Review major upgrades manually.
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
 
   - package-ecosystem: "docker"
     directory: "/"
     schedule:
       interval: "weekly"
+    open-pull-requests-limit: 5
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
 
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
       interval: "weekly"
+    open-pull-requests-limit: 5
