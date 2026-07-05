@@ -149,6 +149,7 @@
       "main": [[{ "node": "Respond Error", "type": "main", "index": 0 }]]
     }
   },
+  "id": "medigap-chat-workflow-001",
   "active": false,
   "settings": { "executionOrder": "v1" },
   "meta": {
