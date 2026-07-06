@@ -56,13 +56,13 @@
     {
       "parameters": {
         "conditions": {
-          "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "loose" },
+          "options": { "caseSensitive": true, "typeValidation": "loose" },
           "conditions": [
             {
               "id": "has-choices",
-              "leftValue": "={{ $json.choices }}",
+              "leftValue": "={{ $json.choices ? \"yes\" : \"\" }}",
               "rightValue": "",
-              "operator": { "type": "array", "operation": "notEmpty" }
+              "operator": { "type": "string", "operation": "notEmpty" }
             }
           ],
           "combinator": "and"
