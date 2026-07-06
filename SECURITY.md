@@ -23,3 +23,14 @@ acknowledge reports as soon as possible and aim to resolve confirmed issues prom
   reintroduce far more severe, actually-exploitable issues — so this is accepted as low-risk until
   upstream Next.js ships a patched bundled `postcss`. Re-run `npm audit` after any Next.js version bump to
   check if it's resolved.
+- `Content-Security-Policy`'s `script-src` includes `'unsafe-inline'` (`next.config.js`). A stricter
+  per-request nonce-based CSP (via `middleware.ts`, forwarding the nonce on both request and response
+  headers per Next.js's documented pattern) was implemented and tested, but Next.js 15's own
+  framework-injected inline hydration scripts were not consistently receiving that nonce in this build
+  configuration (`output: 'standalone'`), which broke client-side hydration entirely (buttons rendered but
+  did nothing). Reverted to `'unsafe-inline'` for `script-src` rather than ship a broken app. Practical
+  impact is limited: this project never renders untrusted HTML via `dangerouslySetInnerHTML`, chat replies
+  are rendered as plain React text (auto-escaped), and there's no user-generated-content storage that could
+  later be reflected as a stored-XSS vector — so the realistic exploitation path for this relaxation is
+  narrow. Revisit if a future Next.js release documents a working nonce pattern for standalone-output
+  builds.
