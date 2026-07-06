@@ -6,7 +6,9 @@ const securityHeaders = [
       // 'unsafe-inline' here is a deliberate, documented tradeoff — see SECURITY.md.
       "script-src 'self' 'unsafe-inline'",
       "style-src 'self' 'unsafe-inline'",
-      "img-src 'self' data:",
+      // blob: is required because the image-upload flow loads the selected file into
+      // an <img> via URL.createObjectURL() before drawing it to a canvas for resizing.
+      "img-src 'self' data: blob:",
       "connect-src 'self'",
       "frame-ancestors 'none'",
       "base-uri 'self'",
